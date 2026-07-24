@@ -1,9 +1,10 @@
 # Progress — BilimHub
 
-**Last updated:** 2026-07-24 14:45
+**Last updated:** 2026-07-24 21:30
 
 ## Current Task
-ЗАВЕРШЕНО — все фазы P0–P5 выполнены, критерии §21 закрыты.
+Ожидание аккаунтов Vercel + Neon от пользователя (регистрацию делает он).
+Код к публикации готов: см. «Serverless» ниже.
 
 ## Completed
 - **P0–P2** — инфраструктура (Postgres 16 docker :5433, Prisma 7 driver-adapter),
@@ -46,6 +47,19 @@
 ## Verified Working
 `pnpm lint` / `typecheck` / `build` / `test` (45) / `test:e2e` (18) — все чисто.
 Сид-аккаунты: admin/teacher/parent@bilimhub.local (Bilim2026!), ученик +77000000001 (OTP).
+
+## Serverless (Vercel + Neon) — готово в коде
+- Argon2id → WASM (hash-wasm): нативных модулей нет; старые PHC-хэши проверяются
+  (тест tests/unit/passwords.test.ts с реальным хэшем от нативной реализации).
+  Проверено и в Alpine-контейнере: вход админа 200.
+- FILE_STORAGE=db → байты в FileAsset.data (миграция 20260724200657, аддитивная);
+  round-trip проверен скриптом. disk остаётся дефолтом для Docker.
+- Рейтинг: enqueueLeaderboardRecompute стал async и на VERCEL/JOBS_INLINE считает
+  в запросе; /api/cron/leaderboard (CRON_SECRET) + vercel.json crons — страховка.
+- vercel-build = prisma migrate deploy && next build.
+- Сид отказывается наполнять нелокальную БД без SEED_PASSWORD (проверено).
+- Инструкция: docs/deployment.md → «Вариант A — Vercel + Neon», ADR D-014.
+- Секреты, выданные пользователю для env Vercel: APP_SECRET 79aefa65…, CRON_SECRET 01fa3689…
 
 ## Notes for Resume
 - Docker-образ собран и проверен целиком (compose --profile app): migrate deploy на старте,
