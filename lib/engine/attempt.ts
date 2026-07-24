@@ -317,7 +317,7 @@ export async function onAttemptGraded(attemptId: string) {
     });
   }
   if (at.challengeId) {
-    enqueueLeaderboardRecompute(at.challengeId);
+    await enqueueLeaderboardRecompute(at.challengeId);
   }
   await notify(at.userId, "attempt_graded", {
     testId: at.testId,

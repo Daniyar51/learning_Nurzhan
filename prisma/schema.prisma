@@ -1045,6 +1045,9 @@ model FileAsset {
   mime       String
   size       Int
   visibility FileVisibility @default(PRIVATE)
+  // Содержимое при FILE_STORAGE=db (serverless: ФС только для чтения).
+  // При FILE_STORAGE=disk остаётся null — байты лежат в UPLOADS_DIR.
+  data       Bytes?
   createdAt  DateTime       @default(now())
   deletedAt  DateTime?
   owner      User?          @relation(fields: [ownerId], references: [id])

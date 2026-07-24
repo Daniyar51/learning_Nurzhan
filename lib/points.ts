@@ -154,6 +154,18 @@ export async function recomputeChallengeLeaderboard(challengeId: string): Promis
   }
 }
 
-export function enqueueLeaderboardRecompute(challengeId: string): void {
+/**
+ * На обычном сервере пересчёт уходит в фоновую очередь (D-002).
+ * На serverless-платформах процесс может быть остановлен сразу после ответа,
+ * поэтому там пересчёт выполняется в запросе — иначе рейтинг молча отстаёт.
+ * Ночной cron (/api/cron/leaderboard) страхует оба режима.
+ */
+const INLINE_JOBS = !!process.env.VERCEL || process.env.JOBS_INLINE === "1";
+
+export async function enqueueLeaderboardRecompute(challengeId: string): Promise<void> {
+  if (INLINE_JOBS) {
+    await recomputeChallengeLeaderboard(challengeId);
+    return;
+  }
   enqueue(`leaderboard:${challengeId}`, () => recomputeChallengeLeaderboard(challengeId));
 }

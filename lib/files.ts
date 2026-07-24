@@ -1,5 +1,10 @@
-// FileStorage (§ D-003): disk-провайдер + подписанные URL (HMAC, срок действия).
-// S3/MinIO подключается реализацией того же интерфейса через env FILE_STORAGE=s3.
+// FileStorage (§ D-003): подписанные URL (HMAC со сроком действия) + два
+// драйвера хранения байтов, выбираемых через env FILE_STORAGE:
+//   disk (по умолчанию) — файл в UPLOADS_DIR; для локальной разработки и Docker;
+//   db                  — байты в колонке FileAsset.data; для платформ с
+//                         файловой системой только для чтения (Vercel и т.п.).
+// S3/MinIO подключается третьим драйвером без изменений вызывающего кода:
+// наружу отдаётся всегда /api/files/[id], а не путь в хранилище.
 
 import { createHmac, randomUUID } from "node:crypto";
 import { mkdir, writeFile, readFile, unlink } from "node:fs/promises";
@@ -9,6 +14,7 @@ import { err } from "./http";
 
 const SECRET = () => process.env.APP_SECRET ?? "dev-secret-change-me";
 const DIR = () => path.join(process.cwd(), process.env.UPLOADS_DIR ?? "uploads");
+const DRIVER = () => (process.env.FILE_STORAGE === "db" ? "db" : "disk");
 
 export const ALLOWED_MIME: Record<string, string[]> = {
   image: ["image/png", "image/jpeg", "image/webp", "image/svg+xml"],
@@ -33,9 +39,11 @@ export async function saveFile(params: {
   if (!mimeAllowed(params.mime)) throw err.badRequest("file_type_not_allowed");
   if (params.bytes.length > MAX_FILE_SIZE) throw err.badRequest("file_too_large");
   const key = `${new Date().toISOString().slice(0, 10)}/${randomUUID()}`;
-  const full = path.join(DIR(), key);
-  await mkdir(path.dirname(full), { recursive: true });
-  await writeFile(full, params.bytes);
+  if (DRIVER() === "disk") {
+    const full = path.join(DIR(), key);
+    await mkdir(path.dirname(full), { recursive: true });
+    await writeFile(full, params.bytes);
+  }
   return prisma.fileAsset.create({
     data: {
       ownerId: params.ownerId,
@@ -44,15 +52,26 @@ export async function saveFile(params: {
       mime: params.mime,
       size: params.bytes.length,
       visibility: params.visibility ?? "PRIVATE",
+      // Prisma ждёт Uint8Array<ArrayBuffer>; Buffer от Node типизирован шире
+      data: DRIVER() === "db" ? new Uint8Array(params.bytes) : null,
     },
   });
 }
 
 export async function readFileBytes(key: string): Promise<Buffer> {
+  if (DRIVER() === "db") {
+    const row = await prisma.fileAsset.findUnique({ where: { key }, select: { data: true } });
+    if (!row?.data) throw err.notFound();
+    return Buffer.from(row.data);
+  }
   return readFile(path.join(DIR(), key));
 }
 
 export async function deleteFileBytes(key: string): Promise<void> {
+  if (DRIVER() === "db") {
+    await prisma.fileAsset.updateMany({ where: { key }, data: { data: null } });
+    return;
+  }
   await unlink(path.join(DIR(), key)).catch(() => {});
 }
 

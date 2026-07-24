@@ -73,6 +73,18 @@ pnpm db:seed      # сид: роли, аккаунты, демо-контент
 
 Перед первым `pnpm test:e2e` выполните `pnpm exec playwright install chromium`.
 
+## Публикация в интернете
+
+Готов бесплатный путь **Vercel + Neon** (пошагово — в
+[docs/deployment.md](docs/deployment.md)): миграции применяются на сборке
+скриптом `vercel-build`, файлы хранятся в БД (`FILE_STORAGE=db`), пересчёт
+рейтинга идёт в запросе + ночной cron. Наполнение публичного стенда — только
+со своим паролем:
+
+```bash
+DATABASE_URL="<строка Neon>" SEED_PASSWORD="ВашСложныйПароль" pnpm db:seed
+```
+
 ## Запуск через Docker Compose (полностью)
 
 ```bash

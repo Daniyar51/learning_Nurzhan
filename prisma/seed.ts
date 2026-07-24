@@ -7,12 +7,24 @@ import { hashPassword } from "../lib/auth/passwords";
 import { PERMISSIONS, ROLE_PERMISSIONS, type RoleKey } from "../lib/rbac";
 import { seedDemoContent } from "./seed-demo";
 
-// Локальные пароли разработки (см. README). В production сиды аккаунтов не создаются.
-const DEV_PASSWORD = "Bilim2026!";
+// Пароль разработки (см. README). Для публичного стенда его нужно заменить:
+// SEED_PASSWORD=... pnpm db:seed — тогда документированный пароль наружу не попадёт.
+const DEV_PASSWORD = process.env.SEED_PASSWORD || "Bilim2026!";
 
 async function main() {
   if (process.env.NODE_ENV === "production") {
     console.error("Seed демо-аккаунтов запрещён в production. Прерывание.");
+    process.exit(1);
+  }
+  // Наполнение публичного стенда допустимо, но только со своим паролем:
+  // иначе на общедоступном сайте окажется пароль из README.
+  const remote = !/localhost|127\.0\.0\.1|@db[:/]/.test(process.env.DATABASE_URL ?? "");
+  if (remote && !process.env.SEED_PASSWORD) {
+    console.error(
+      "БД не локальная, а SEED_PASSWORD не задан.\n" +
+        "Задайте свой пароль, чтобы демо-аккаунты не получили пароль из README:\n" +
+        '  SEED_PASSWORD="ВашСложныйПароль" pnpm db:seed'
+    );
     process.exit(1);
   }
 
