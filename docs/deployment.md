@@ -1,6 +1,45 @@
 # Деплой
 
-## Вариант A — Vercel + Neon (бесплатный публичный стенд)
+## Вариант A — Render (Blueprint, один аккаунт)
+
+Render поднимает приложение из того же `Dockerfile`, что проверен локально, и
+управляемый PostgreSQL — оба описаны в [render.yaml](../render.yaml), код не
+меняется. Секреты (`APP_SECRET`, `CRON_SECRET`) Render генерирует сам,
+строка подключения к БД подставляется автоматически.
+
+1. **Развернуть.** render.com → Sign up (через GitHub) → **New → Blueprint** →
+   выбрать репозиторий. Render прочитает `render.yaml` и покажет два ресурса
+   (web-сервис и базу) → **Apply**. Первая сборка Docker занимает 5–10 минут.
+2. **Наполнить контентом.** В панели базы скопировать **External Database URL**
+   и выполнить у себя (свой пароль обязателен — сид не даст поставить пароль
+   из README на публичный стенд):
+
+   ```bash
+   DATABASE_URL="<External Database URL>" SEED_PASSWORD="ВашСложныйПароль" pnpm db:seed
+   ```
+
+   Миграции применяются самим контейнером при каждом старте, отдельно
+   запускать их не нужно.
+3. **Проверить.** `https://<имя>.onrender.com/api/healthz` → `{"ok":true}`,
+   затем вход в `/admin`.
+
+Особенности бесплатного тарифа, уже учтённые в `render.yaml`:
+
+- **Сон при простое.** Сервис засыпает после ~15 минут без запросов, первый
+  заход после сна занимает до минуты. Поэтому `JOBS_INLINE=1` — пересчёт
+  рейтинга идёт внутри запроса и не теряется вместе с уснувшим процессом.
+- **Эфемерная файловая система.** Диск контейнера очищается при рестарте,
+  поэтому `FILE_STORAGE=db` — файлы лежат в таблице `FileAsset`.
+- **Срок жизни бесплатной базы.** Бесплатный PostgreSQL на Render выдаётся на
+  ограниченный срок. Когда он подойдёт к концу, база переносится дампом на
+  постоянную (например, Neon), а в сервисе меняется только `DATABASE_URL`:
+
+  ```bash
+  pg_dump "<старый URL>" -Fc > bilimhub.dump
+  pg_restore -d "<новый URL>" --clean bilimhub.dump
+  ```
+
+## Вариант B — Vercel + Neon (serverless)
 
 Neon даёт управляемый PostgreSQL, Vercel — хостинг Next.js. Репозиторий уже
 подготовлен: сборка на Vercel идёт скриптом `vercel-build`
@@ -48,7 +87,7 @@ Neon даёт управляемый PostgreSQL, Vercel — хостинг Next.
   странице — это удобно для показа, но означает, что войти под чужим номером
   может любой. Для реальных учеников подключайте `http`-провайдер.
 
-## Вариант B — Docker Compose (одна машина)
+## Вариант C — Docker Compose (своя машина)
 
 ```bash
 cp .env.docker.example .env.docker     # задать APP_SECRET, пароль БД
@@ -59,19 +98,15 @@ docker compose --profile app up -d --build
 `prisma migrate deploy` и поднимает `next start` на `:3000`. Файлы пользователей
 живут в volume `uploads`, данные БД — в `pg_data`.
 
-Сид демо-данных в production не выполняется (защита в seed.ts). Первого
-администратора создайте вручную:
+Сид демо-данных в production не выполняется (защита в seed.ts). Наполнить
+базу можно с локальной машины, указав её адрес и свой пароль:
 
 ```bash
-docker compose exec app node -e "
-const argon2=require('argon2');
-(async()=>{ console.log(await argon2.hash(process.argv[1],{type:argon2.argon2id})); })()
-" 'ВашПароль'
-# полученный хэш → INSERT в User/Membership через psql, либо временно
-# запустите сид локально и перенесите дампом только справочники.
+DATABASE_URL="postgresql://bilimhub:…@ваш-хост:5432/bilimhub" \
+  SEED_PASSWORD="ВашСложныйПароль" pnpm db:seed
 ```
 
-## Вариант B — без Docker (systemd/PM2 + управляемый PostgreSQL)
+## Вариант D — без Docker (systemd/PM2 + управляемый PostgreSQL)
 
 ```bash
 pnpm install --frozen-lockfile

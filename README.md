@@ -75,14 +75,17 @@ pnpm db:seed      # сид: роли, аккаунты, демо-контент
 
 ## Публикация в интернете
 
-Готов бесплатный путь **Vercel + Neon** (пошагово — в
-[docs/deployment.md](docs/deployment.md)): миграции применяются на сборке
-скриптом `vercel-build`, файлы хранятся в БД (`FILE_STORAGE=db`), пересчёт
-рейтинга идёт в запросе + ночной cron. Наполнение публичного стенда — только
-со своим паролем:
+Основной путь — **Render Blueprint** ([render.yaml](render.yaml)): один аккаунт,
+приложение из готового `Dockerfile` и управляемый PostgreSQL поднимаются вместе,
+секреты генерирует Render. Альтернатива — **Vercel + Neon** (serverless,
+сборка через `vercel-build`). Оба варианта пошагово описаны в
+[docs/deployment.md](docs/deployment.md).
+
+Наполнение публичного стенда — только со своим паролем (сид проверяет это и
+откажется ставить пароль из README на нелокальную базу):
 
 ```bash
-DATABASE_URL="<строка Neon>" SEED_PASSWORD="ВашСложныйПароль" pnpm db:seed
+DATABASE_URL="<строка подключения к БД стенда>" SEED_PASSWORD="ВашСложныйПароль" pnpm db:seed
 ```
 
 ## Запуск через Docker Compose (полностью)

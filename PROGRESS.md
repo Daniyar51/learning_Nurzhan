@@ -1,10 +1,10 @@
 # Progress — BilimHub
 
-**Last updated:** 2026-07-24 21:30
+**Last updated:** 2026-07-24 22:10
 
 ## Current Task
-Ожидание аккаунтов Vercel + Neon от пользователя (регистрацию делает он).
-Код к публикации готов: см. «Serverless» ниже.
+Выбран Render (Blueprint). Ожидание: пользователь регистрируется на render.com
+и применяет render.yaml. Код не менялся — тот же Docker-образ.
 
 ## Completed
 - **P0–P2** — инфраструктура (Postgres 16 docker :5433, Prisma 7 driver-adapter),
@@ -48,7 +48,17 @@
 `pnpm lint` / `typecheck` / `build` / `test` (45) / `test:e2e` (18) — все чисто.
 Сид-аккаунты: admin/teacher/parent@bilimhub.local (Bilim2026!), ученик +77000000001 (OTP).
 
-## Serverless (Vercel + Neon) — готово в коде
+## Render — готово
+- render.yaml: web (runtime docker, plan free, region frankfurt, healthCheckPath
+  /api/healthz) + managed PostgreSQL free; DATABASE_URL подставляется fromDatabase,
+  APP_SECRET/CRON_SECRET — generateValue.
+- FILE_STORAGE=db (ФС контейнера эфемерна) и JOBS_INLINE=1 (free-инстанс засыпает).
+- Проверено локально: контейнер слушает PORT из окружения (запуск с PORT=10000 →
+  healthz 200), значит health-check Render пройдёт.
+- Наполнение: DATABASE_URL=<External Database URL> SEED_PASSWORD=... pnpm db:seed.
+- Бесплатная БД Render временная → при истечении дамп в Neon, меняется только DATABASE_URL.
+
+## Serverless (Vercel + Neon) — тоже готово в коде
 - Argon2id → WASM (hash-wasm): нативных модулей нет; старые PHC-хэши проверяются
   (тест tests/unit/passwords.test.ts с реальным хэшем от нативной реализации).
   Проверено и в Alpine-контейнере: вход админа 200.
