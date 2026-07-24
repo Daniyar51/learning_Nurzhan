@@ -1,10 +1,15 @@
 # Progress — BilimHub
 
-**Last updated:** 2026-07-24 22:10
+**Last updated:** 2026-07-24 22:40
 
 ## Current Task
-Выбран Render (Blueprint). Ожидание: пользователь регистрируется на render.com
-и применяет render.yaml. Код не менялся — тот же Docker-образ.
+Код перенесён в Daniyar51/learning_Nurzhan (remote `nurzhan`, вся история,
+3 ветки). Старый daniyar3348/math (`origin`) оставлен нетронутым.
+Ожидание: пользователь применяет render.yaml на render.com.
+
+ВАЖНО про пуши: аккаунт Daniyar51 ≠ daniyar3348 (под которым авторизован gh).
+Доступ выдан приглашением collaborator (Write), принято через
+`gh api -X PATCH /user/repository_invitations/<id>`. Пушить: `git push nurzhan main`.
 
 ## Completed
 - **P0–P2** — инфраструктура (Postgres 16 docker :5433, Prisma 7 driver-adapter),
